@@ -4,6 +4,7 @@ import Queue
 from time import time
 from transitions.extensions import GraphMachine as Machine
 from transitions import State
+import transitions
 import logging
 
 
@@ -86,21 +87,24 @@ class Tails():
             if  self.shutdown_flag or time() - self.last_event_time > self.watchdog_timeout:
                 command = self.shutdown_map[self.state]
 
-            if command is not None:
-                # Attempt to execute a transition if we have one
-                if command == 'shutdown':
-                    self.shutdown()
-                elif command == 'launch':
-                    self.launch()
-                elif command == 'start_navigate':
-                    self.start_navigate()
-                elif command == 'stop_navigate':
-                    self.stop_navigate()
-                elif command == 'land':
-                    self.land()
-                elif command == 'watchdog':
-                    # This command only exists to keep the drone from advancing towards shutdown
-                    pass
+            try:
+                if command is not None:
+                    # Attempt to execute a transition if we have one
+                    if command == 'shutdown':
+                        self.shutdown()
+                    elif command == 'launch':
+                        self.launch()
+                    elif command == 'start_navigate':
+                        self.start_navigate()
+                    elif command == 'stop_navigate':
+                        self.stop_navigate()
+                    elif command == 'land':
+                        self.land()
+                    elif command == 'watchdog':
+                        # This command only exists to keep the drone from advancing towards shutdown
+                        pass
+            except transitions.core.MachineError as e:
+                rospy.logwarn(str(e))
 
             # Execute the required states function update_rate_hz times a second
             if self.state == 'shutdown':
