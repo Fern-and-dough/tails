@@ -55,7 +55,10 @@ class Tails():
         self.machine.add_transition('land', 'hover', 'land')
         self.machine.add_transition('grounded', 'land', 'idle')
 
-        self.machine.get_graph().draw('visualize_finite_state_machine.png', prog='dot')
+        try:
+            self.machine.get_graph().draw('visualize_finite_state_machine.png', prog='dot')
+        except:
+            pass
 
         self.shutdown_map = {'idle': 'shutdown',
                                 'launch': 'hover',
