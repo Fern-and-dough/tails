@@ -87,8 +87,8 @@ class Tails():
             if  self.shutdown_flag or time() - self.last_event_time > self.watchdog_timeout:
                 command = self.shutdown_map[self.state]
 
-            try:
-                if command is not None:
+            if command is not None:
+                try:
                     # Attempt to execute a transition if we have one
                     if command == 'shutdown':
                         self.shutdown()
@@ -103,8 +103,8 @@ class Tails():
                     elif command == 'watchdog':
                         # This command only exists to keep the drone from advancing towards shutdown
                         pass
-            except transitions.core.MachineError as e:
-                rospy.logwarn(str(e))
+                except transitions.core.MachineError as e:
+                    rospy.logwarn(str(e))
 
             # Execute the required states function update_rate_hz times a second
             if self.state == 'shutdown':
