@@ -45,6 +45,8 @@ class Tails():
 
         self.last_event_time = time()
 
+        self.last_cycle_time = time()
+
         states = ['idle',
                   'launch',
                   'hover',
@@ -240,7 +242,7 @@ class Tails():
         rospy.loginfo("FSM: enter_launch")
         for dc in frange(5.0, 5.5, 0.1):
             self.pwm_thr.ChangeDutyCycle(dc)
-        time.sleep(0.1)
+            sleep(0.2)
 
     def exit_launch(self):
         rospy.loginfo("FSM: exit_launch")
@@ -257,7 +259,7 @@ class Tails():
         rospy.loginfo("FSM: enter_land")
         for dc in frange_r(5.5, 5.0, 0.1):
             self.pwm_thr.ChangeDutyCycle(dc)
-        time.sleep(0.1)
+            sleep(0.2)
 
     def exit_land(self):
         rospy.loginfo("FSM: exit_land")

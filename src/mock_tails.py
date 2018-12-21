@@ -24,7 +24,7 @@ class PWM():
 
 
     def log(self):
-        self.logfile.write("%f,%d,%d\n" % (time.time(), self.freq, self.duty))
+        self.logfile.write("%f,%f,%f\n" % (time.time(), self.freq, self.duty))
 
     def start(self, duty):
         self.logfile = open("pwm_%d.csv" % self.ctr, 'w')
