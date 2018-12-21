@@ -177,9 +177,7 @@ class Tails():
     def control_launch(self):
         # Calls self.hover() when done
         #increase duty cycle from 0 to 100%
-        for dc in frange(5.0, 5.5, 0.1):
-            pwm_thr.ChangeDutyCycle(dc)
-        time.sleep(0.1)
+        
         self.hover()
 
     def control_hover(self):
@@ -191,17 +189,12 @@ class Tails():
         # Calls self.stop_navigate() when done
         # To go forward we need elevate to "go down" - throttle up
         # 7.5 to 7.6 will slowly rotate the drone right
-        for dc in frange(7.5, 8, 0.5):
-            pwm_rud.ChangeDutyCycle(dc)
-            #pwm_ele.ChangeDutyCycle(dc)
-        time.sleep(1)
+        pwm_rud.ChangeDutyCycle(8)
         self.stop_navigate()
 
     def control_land(self):
         # Calls self.grounded() when done
-        for dc in frange_r(5.5, 5.0, 0.1):
-            pwm_thr.ChangeDutyCycle(dc)
-        time.sleep(0.1)
+        
         self.grounded()
 
     # FSM Transitions - Implement as needed
@@ -222,7 +215,9 @@ class Tails():
 
     def enter_launch(self):
         rospy.loginfo("FSM: enter_launch")
-        #does not need implementation
+        for dc in frange(5.0, 5.5, 0.1):
+            pwm_thr.ChangeDutyCycle(dc)
+        time.sleep(0.1)
 
     def exit_launch(self):
         rospy.loginfo("FSM: exit_launch") 
@@ -235,16 +230,23 @@ class Tails():
 
     def enter_land(self):
         rospy.loginfo("FSM: enter_land")
+        for dc in frange_r(5.5, 5.0, 0.1):
+            pwm_thr.ChangeDutyCycle(dc)
+        time.sleep(0.1)
 
     def exit_land(self):
         rospy.loginfo("FSM: exit_land")
 
     def enter_navigate(self):
         rospy.loginfo("FSM: enter_navigate")
+        for dc in frange(7.5, 8, 0.5):
+            pwm_rud.ChangeDutyCycle(dc)
+            #pwm_ele.ChangeDutyCycle(dc)
 
     def exit_navigate(self):
         rospy.loginfo("FSM: exit_navigate")
-        pwm_rud.ChangeDutyCycle(7.5)
+        for dc in frange_r(8, 7.5, 0.5):
+            pwm_rud.ChangeDutyCycle(dc)
 
     def enter_shutdown(self):
         rospy.loginfo("FSM: enter_shutdown")
