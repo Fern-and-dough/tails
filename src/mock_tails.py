@@ -5,11 +5,11 @@ _gpio_states = {}
 class FSMLogger():
     def __init__(self):
         self.f = open("fsm.csv", "w")
-        self.f.write("time,state")
+        self.f.write("time,state\n")
     def __del__(self):
         self.f.close()
     def log(self, state):
-        self.f.write("%f,%s" % (time.time(), state))
+        self.f.write("%f,%s\n" % (time.time(), state))
 
 class PWM():
     def __init__(self, ctr, freq):
@@ -56,10 +56,12 @@ class GPIO():
     OUT = "OUT"
     IN = "IN"
 
+    @staticmethod
     def setmode(mode):
         global _setmode
         _setmode = True
 
+    @staticmethod
     def setup(ctr, direction, initial):
         global _setmode
         global _gpio_states
@@ -71,5 +73,9 @@ class GPIO():
 
         if initial != 0:
             raise Exception("Initial value of PWM pin not set to zero!")
+
+    @staticmethod
+    def cleanup():
+        pass
 
     PWM = PWM
