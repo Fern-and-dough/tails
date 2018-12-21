@@ -6,7 +6,54 @@ from transitions.extensions import GraphMachine as Machine
 from transitions import State
 import transitions
 import logging
+import Rpi.GPIO as GPIO
+import time
 
+# For increasing pwm signal
+def frange(x, y, jump):
+  while x < y:
+    yield x
+    x += jump
+
+# For decreasing pwm signal 
+def frange_r(x, y, jump):
+  while y < x:
+    yield x
+    x -= jump    
+
+GPIO.setmode(GPIO.BOARD) #change to BOARD numbering schema
+
+#set pins as output and as low
+ail = 7
+ele = 8
+thr = 11
+rud = 12
+
+ctr = (ail, ele, thr, rud)
+
+#setup ctr as output channels and set to 1 (ON)
+GPIO.setup(ctr, GPIO.OUT, initial = 1)
+
+#start pwm with 100 freq
+pwm_ail = GPIO.PWM(ctr[0], 50)
+pwm_ele = GPIO.PWM(ctr[1], 50)
+pwm_thr = GPIO.PWM(ctr[2], 50)
+pwm_rud = GPIO.PWM(ctr[3], 50)
+
+#All in off state
+pwm_ail.start(0)
+pwm_ele.start(0)
+pwm_thr.start(0)
+pwm_rud.start(0)
+
+#Intial pwm states
+pwm_rud.ChangeDutyCycle(10)
+pwm_thr.ChangeDutyCycle(5)
+time.sleep(2)
+#5% left, 10% right, 7.5% off
+pwm_rud.ChangeDutyCycle(7.5)
+pwm_ele.ChangeDutyCycle(7.5)
+pwm_ail.ChangeDutyCycle(7.5)
 
 class Tails():
     def __init__(self, update_rate_hz=10, watchdog_timeout=10):
@@ -129,35 +176,56 @@ class Tails():
 
     def control_launch(self):
         # Calls self.hover() when done
-        # TODO: Replace me with real logic!
+        #increase duty cycle from 0 to 100%
+        for dc in frange(5.0, 5.5, 0.1):
+            pwm_thr.ChangeDutyCycle(dc)
+        time.sleep(0.1)
         self.hover()
 
     def control_hover(self):
-        # TODO: Replace me with real logic!
+        # Will remain hovering indefinetly until
+        # no input is recieved.  
         pass
 
     def control_navigate(self):
         # Calls self.stop_navigate() when done
-        # TODO: Replace me with real logic!
+        # To go forward we need elevate to "go down" - throttle up
+        # 7.5 to 7.6 will slowly rotate the drone right
+        for dc in frange(7.5, 8, 0.5):
+            pwm_rud.ChangeDutyCycle(dc)
+            #pwm_ele.ChangeDutyCycle(dc)
+        time.sleep(1)
         self.stop_navigate()
 
     def control_land(self):
         # Calls self.grounded() when done
-        # TODO: Replace me with real logic!
+        for dc in frange_r(5.5, 5.0, 0.1):
+            pwm_thr.ChangeDutyCycle(dc)
+        time.sleep(0.1)
         self.grounded()
 
     # FSM Transitions - Implement as needed
     def enter_idle(self):
         rospy.loginfo("FSM: enter_idle")
+        #Intial pwm states
+        pwm_rud.ChangeDutyCycle(10)
+        pwm_thr.ChangeDutyCycle(5)
+        time.sleep(2)
+        #5% left, 10% right, 7.5% off
+        pwm_rud.ChangeDutyCycle(7.5)
+        pwm_ele.ChangeDutyCycle(7.5)
+        pwm_ail.ChangeDutyCycle(7.5)
 
     def exit_idle(self):
         rospy.loginfo("FSM: exit_idle")
+        #does not need implementation
 
     def enter_launch(self):
         rospy.loginfo("FSM: enter_launch")
+        #does not need implementation
 
     def exit_launch(self):
-        rospy.loginfo("FSM: exit_launch")
+        rospy.loginfo("FSM: exit_launch") 
 
     def enter_hover(self):
         rospy.loginfo("FSM: enter_hover")
@@ -176,9 +244,12 @@ class Tails():
 
     def exit_navigate(self):
         rospy.loginfo("FSM: exit_navigate")
+        pwm_rud.ChangeDutyCycle(7.5)
 
     def enter_shutdown(self):
         rospy.loginfo("FSM: enter_shutdown")
+        pwm.stop()
+        GPIO.cleanup()
 
     def ros_cmd_callback(self, cmd):
         self.command_queue.put(cmd)
