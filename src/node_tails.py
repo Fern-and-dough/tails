@@ -1,4 +1,5 @@
 import rospy
+from rospy import sleep
 from std_msgs.msg import String
 import Queue
 from time import time
@@ -6,8 +7,14 @@ from transitions.extensions import GraphMachine as Machine
 from transitions import State
 import transitions
 import logging
-import Rpi.GPIO as GPIO
-import time
+
+test_mode = True
+if not test_mode:
+    import RPi.GPIO as GPIO
+else:
+    from mock_tails import GPIO
+
+from mock_tails import FSMLogger
 
 # For increasing pwm signal
 def frange(x, y, jump):
@@ -15,50 +22,19 @@ def frange(x, y, jump):
     yield x
     x += jump
 
-# For decreasing pwm signal 
+# For decreasing pwm signal
 def frange_r(x, y, jump):
   while y < x:
     yield x
-    x -= jump    
+    x -= jump
 
-GPIO.setmode(GPIO.BOARD) #change to BOARD numbering schema
-
-#set pins as output and as low
-ail = 7
-ele = 8
-thr = 11
-rud = 12
-
-ctr = (ail, ele, thr, rud)
-
-#setup ctr as output channels and set to 1 (ON)
-GPIO.setup(ctr, GPIO.OUT, initial = 1)
-
-#start pwm with 100 freq
-pwm_ail = GPIO.PWM(ctr[0], 50)
-pwm_ele = GPIO.PWM(ctr[1], 50)
-pwm_thr = GPIO.PWM(ctr[2], 50)
-pwm_rud = GPIO.PWM(ctr[3], 50)
-
-#All in off state
-pwm_ail.start(0)
-pwm_ele.start(0)
-pwm_thr.start(0)
-pwm_rud.start(0)
-
-#Intial pwm states
-pwm_rud.ChangeDutyCycle(10)
-pwm_thr.ChangeDutyCycle(5)
-time.sleep(2)
-#5% left, 10% right, 7.5% off
-pwm_rud.ChangeDutyCycle(7.5)
-pwm_ele.ChangeDutyCycle(7.5)
-pwm_ail.ChangeDutyCycle(7.5)
 
 class Tails():
     def __init__(self, update_rate_hz=10, watchdog_timeout=10):
         rospy.init_node('tails')
         rospy.on_shutdown(self.ros_shutdown_signal)
+
+        self.logger = FSMLogger()
 
         # Threading / Synchronization Primitives
         self.command_queue = Queue.Queue()
@@ -113,6 +89,43 @@ class Tails():
                                 'hover': 'land',
                                 'land': 'idle',
                                 'navigate': 'stop_navigate'}
+
+        GPIO.setmode(GPIO.BOARD) #change to BOARD numbering schema
+
+        #set pins as output and as low
+        ail = 7
+        ele = 8
+        thr = 11
+        rud = 12
+
+        self.ctr = (ail, ele, thr, rud)
+
+        #setup ctr as output channels and set to 1 (ON)
+        GPIO.setup(self.ctr[0], GPIO.OUT, initial = 0)
+        GPIO.setup(self.ctr[1], GPIO.OUT, initial = 0)
+        GPIO.setup(self.ctr[2], GPIO.OUT, initial = 0)
+        GPIO.setup(self.ctr[3], GPIO.OUT, initial = 0)
+
+        #start pwm with 100 freq
+        self.pwm_ail = GPIO.PWM(self.ctr[0], 50)
+        self.pwm_ele = GPIO.PWM(self.ctr[1], 50)
+        self.pwm_thr = GPIO.PWM(self.ctr[2], 50)
+        self.pwm_rud = GPIO.PWM(self.ctr[3], 50)
+
+        self.pwms = [self.pwm_ail, self.pwm_ele, self.pwm_thr, self.pwm_rud]
+
+        #All in off state
+        for pwm in self.pwms:
+            pwm.start(0)
+
+        #Intial pwm states
+        self.pwm_rud.ChangeDutyCycle(10)
+        self.pwm_thr.ChangeDutyCycle(5)
+        sleep(2)
+        #5% left, 10% right, 7.5% off
+        self.pwm_rud.ChangeDutyCycle(7.5)
+        self.pwm_ele.ChangeDutyCycle(7.5)
+        self.pwm_ail.ChangeDutyCycle(7.5)
 
         rospy.Subscriber('/cmd', String,
                          self.ros_cmd_callback, queue_size=100)
@@ -177,80 +190,95 @@ class Tails():
     def control_launch(self):
         # Calls self.hover() when done
         #increase duty cycle from 0 to 100%
-        
+        if test_mode:
+            sleep(3)
         self.hover()
 
     def control_hover(self):
         # Will remain hovering indefinetly until
-        # no input is recieved.  
+        # no input is recieved.
         pass
 
     def control_navigate(self):
         # Calls self.stop_navigate() when done
         # To go forward we need elevate to "go down" - throttle up
         # 7.5 to 7.6 will slowly rotate the drone right
-        pwm_rud.ChangeDutyCycle(8)
+
+        self.pwm_rud.ChangeDutyCycle(8)
+
+        if test_mode:
+            sleep(3)
         self.stop_navigate()
 
     def control_land(self):
         # Calls self.grounded() when done
-        
+
+
+        if test_mode:
+            sleep(3)
+
         self.grounded()
 
     # FSM Transitions - Implement as needed
     def enter_idle(self):
         rospy.loginfo("FSM: enter_idle")
         #Intial pwm states
-        pwm_rud.ChangeDutyCycle(10)
-        pwm_thr.ChangeDutyCycle(5)
-        time.sleep(2)
+        self.pwm_rud.ChangeDutyCycle(10)
+        self.pwm_thr.ChangeDutyCycle(5)
+        sleep(2)
         #5% left, 10% right, 7.5% off
-        pwm_rud.ChangeDutyCycle(7.5)
-        pwm_ele.ChangeDutyCycle(7.5)
-        pwm_ail.ChangeDutyCycle(7.5)
+        self.pwm_rud.ChangeDutyCycle(7.5)
+        self.pwm_ele.ChangeDutyCycle(7.5)
+        self.pwm_ail.ChangeDutyCycle(7.5)
 
     def exit_idle(self):
         rospy.loginfo("FSM: exit_idle")
         #does not need implementation
 
     def enter_launch(self):
+        self.logger.log("launch")
         rospy.loginfo("FSM: enter_launch")
         for dc in frange(5.0, 5.5, 0.1):
-            pwm_thr.ChangeDutyCycle(dc)
+            self.pwm_thr.ChangeDutyCycle(dc)
         time.sleep(0.1)
 
     def exit_launch(self):
-        rospy.loginfo("FSM: exit_launch") 
+        rospy.loginfo("FSM: exit_launch")
 
     def enter_hover(self):
+        self.logger.log("hover")
         rospy.loginfo("FSM: enter_hover")
 
     def exit_hover(self):
         rospy.loginfo("FSM: exit_hover")
 
     def enter_land(self):
+        self.logger.log("land")
         rospy.loginfo("FSM: enter_land")
         for dc in frange_r(5.5, 5.0, 0.1):
-            pwm_thr.ChangeDutyCycle(dc)
+            self.pwm_thr.ChangeDutyCycle(dc)
         time.sleep(0.1)
 
     def exit_land(self):
         rospy.loginfo("FSM: exit_land")
 
     def enter_navigate(self):
+        self.logger.log("navigate")
         rospy.loginfo("FSM: enter_navigate")
         for dc in frange(7.5, 8, 0.5):
-            pwm_rud.ChangeDutyCycle(dc)
+            self.pwm_rud.ChangeDutyCycle(dc)
             #pwm_ele.ChangeDutyCycle(dc)
 
     def exit_navigate(self):
         rospy.loginfo("FSM: exit_navigate")
         for dc in frange_r(8, 7.5, 0.5):
-            pwm_rud.ChangeDutyCycle(dc)
+            self.pwm_rud.ChangeDutyCycle(dc)
 
     def enter_shutdown(self):
+        self.logger.log("shutdown")
         rospy.loginfo("FSM: enter_shutdown")
-        pwm.stop()
+        for pwm in self.pwms:
+            pwm.stop()
         GPIO.cleanup()
 
     def ros_cmd_callback(self, cmd):
