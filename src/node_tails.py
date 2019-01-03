@@ -1,11 +1,14 @@
 import rospy
 from std_msgs.msg import String
+from sensor_msgs.msg import Imu
 import Queue
+from collections import deque
 from time import time
 from transitions.extensions import GraphMachine as Machine
 from transitions import State
 import transitions
 import logging
+import numpy as np
 
 test_mode = True
 if not test_mode:
@@ -46,7 +49,13 @@ class Tails():
 
         self.last_cycle_time = time()
 
+        self.last_imu_linear = deque(maxlen=100)
+        self.last_imu_angular = deque(maxlen=100)
+
         self.state_t = 0.
+
+        self.linear_z_mean = None
+        self.linear_z_std = None
 
         states = ['idle',
                   'launch',
@@ -123,6 +132,8 @@ class Tails():
 
         rospy.Subscriber('/cmd', String,
                          self.ros_cmd_callback, queue_size=100)
+
+        rospy.Subscriber('/imu', Imu, self.ros_imu_callback, queue_size=10)
     def run(self):
 
         self.enter_idle()
@@ -208,7 +219,9 @@ class Tails():
         # Calls self.grounded() when done
         for dc in frange_r(6, 5.0, 0.1):
             self.pwm_thr.ChangeDutyCycle(dc)
-        self.grounded()
+
+        if (self.linear_z_mean >= -9.81 - 0.1 and self.linear_z_mean <= -9.81 + 0.1) and self.linear_z_std < 0.1:
+            self.grounded()
 
     # FSM Transitions - Implement as needed
     def enter_idle(self):
@@ -277,6 +290,17 @@ class Tails():
 
     def ros_cmd_callback(self, cmd):
         self.command_queue.put(cmd)
+
+
+    def ros_imu_callback(self, imu):
+        self.last_imu_linear.append([imu.linear_acceleration.x, imu.linear_acceleration.y, imu.linear_acceleration.z])
+        self.last_imu_angular.append([imu.angular_velocity.x, imu.angular_velocity.y, imu.angular_velocity.z])
+
+        angular = np.array(self.last_imu_angular)
+        linear = np.array(self.last_imu_linear)
+
+        self.linear_z_mean = np.mean(linear[:, 2])
+        self.linear_z_std = np.std(linear[:, 2])
 
     # ROS Signals
     def ros_shutdown_signal(self):
