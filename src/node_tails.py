@@ -220,6 +220,7 @@ class Tails():
         for dc in frange_r(6, 5.0, 0.1):
             self.pwm_thr.ChangeDutyCycle(dc)
 
+        # TODO: Make this way more rigorous and use rosbag to record actual landing
         if (self.linear_z_mean >= -9.81 - 0.1 and self.linear_z_mean <= -9.81 + 0.1) and self.linear_z_std < 0.1:
             self.grounded()
 
