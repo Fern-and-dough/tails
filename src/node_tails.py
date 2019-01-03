@@ -240,6 +240,7 @@ class Tails():
         self.logger.log("launch")
         rospy.loginfo("FSM: enter_launch")
 
+        # TODO: find optimal launch duty cycle 
         self.pwm_thr.ChangeDutyCycle(5.6)
 
         self.state_t = 0
