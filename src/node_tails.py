@@ -38,7 +38,7 @@ class Tails():
         # Threading / Synchronization Primitives
         self.command_queue = Queue.Queue()
 
-        self.update_rate = 1/update_rate_hz
+        self.update_rate = 1.0 / update_rate_hz
         self.watchdog_timeout = watchdog_timeout
         self.shutdown_flag = False
 
@@ -46,7 +46,7 @@ class Tails():
 
         self.last_cycle_time = time()
 
-        self.state_t = 0
+        self.state_t = 0.
 
         states = ['idle',
                   'launch',
@@ -177,6 +177,8 @@ class Tails():
                 self.control_grounded()
 
             self.state_t += self.update_rate
+
+            print(self.state_t)
 
     # Drone Control
     def control_idle(self):
