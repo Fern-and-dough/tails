@@ -216,10 +216,6 @@ class Tails():
             self.stop_navigate()
 
     def control_land(self):
-        # Calls self.grounded() when done
-        for dc in frange_r(6, 5.0, 0.1):
-            self.pwm_thr.ChangeDutyCycle(dc)
-
         # TODO: Make this way more rigorous and use rosbag to record actual landing
         if (self.linear_z_mean >= -9.81 - 0.1 and self.linear_z_mean <= -9.81 + 0.1) and self.linear_z_std < 0.1:
             self.grounded()
@@ -260,6 +256,9 @@ class Tails():
         rospy.loginfo("FSM: exit_hover")
 
     def enter_land(self):
+        # TODO: Figure out the duty cycle which slowly loses altitude
+        self.pwm_thr.ChangeDutyCycle(5.3)
+
         self.logger.log("land")
         rospy.loginfo("FSM: enter_land")
 
