@@ -239,8 +239,9 @@ class Tails():
     def enter_launch(self):
         self.logger.log("launch")
         rospy.loginfo("FSM: enter_launch")
-        for dc in frange(5.0, 6, 0.1):
-                    self.pwm_thr.ChangeDutyCycle(dc)
+
+        self.pwm_thr.ChangeDutyCycle(5.6)
+
         self.state_t = 0
 
     def exit_launch(self):
