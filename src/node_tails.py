@@ -194,20 +194,19 @@ class Tails():
         #increase duty cycle from 0 to 100%
         if test_mode:
             sleep(3)
+        for dc in frange(5.0, 6, 0.1):
+            self.pwm_thr.ChangeDutyCycle(dc)
+            sleep(0.2)    
         self.hover()
 
     def control_hover(self):
         # Will remain hovering indefinetly until
-        # no input is recieved.
         pass
 
     def control_navigate(self):
         # Calls self.stop_navigate() when done
         # To go forward we need elevate to "go down" - throttle up
         # 7.5 to 7.6 will slowly rotate the drone right
-
-        self.pwm_rud.ChangeDutyCycle(8)
-
         if test_mode:
             sleep(3)
         self.stop_navigate()
@@ -240,9 +239,6 @@ class Tails():
     def enter_launch(self):
         self.logger.log("launch")
         rospy.loginfo("FSM: enter_launch")
-        for dc in frange(5.0, 5.5, 0.1):
-            self.pwm_thr.ChangeDutyCycle(dc)
-            sleep(0.2)
 
     def exit_launch(self):
         rospy.loginfo("FSM: exit_launch")
@@ -257,7 +253,7 @@ class Tails():
     def enter_land(self):
         self.logger.log("land")
         rospy.loginfo("FSM: enter_land")
-        for dc in frange_r(5.5, 5.0, 0.1):
+        for dc in frange_r(6, 5.0, 0.1):
             self.pwm_thr.ChangeDutyCycle(dc)
             sleep(0.2)
 
@@ -269,12 +265,14 @@ class Tails():
         rospy.loginfo("FSM: enter_navigate")
         for dc in frange(7.5, 8, 0.5):
             self.pwm_rud.ChangeDutyCycle(dc)
+            sleep(0.2)
             #pwm_ele.ChangeDutyCycle(dc)
 
     def exit_navigate(self):
         rospy.loginfo("FSM: exit_navigate")
         for dc in frange_r(8, 7.5, 0.5):
             self.pwm_rud.ChangeDutyCycle(dc)
+            sleep(0.2)
 
     def enter_shutdown(self):
         self.logger.log("shutdown")
