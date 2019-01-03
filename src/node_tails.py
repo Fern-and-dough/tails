@@ -122,15 +122,6 @@ class Tails():
         for pwm in self.pwms:
             pwm.start(0)
 
-        #Intial pwm states
-        self.pwm_rud.ChangeDutyCycle(10)
-        self.pwm_thr.ChangeDutyCycle(5)
-        sleep(2)
-        #5% left, 10% right, 7.5% off
-        self.pwm_rud.ChangeDutyCycle(7.5)
-        self.pwm_ele.ChangeDutyCycle(7.5)
-        self.pwm_ail.ChangeDutyCycle(7.5)
-
         rospy.Subscriber('/cmd', String,
                          self.ros_cmd_callback, queue_size=100)
     def run(self):
@@ -228,9 +219,7 @@ class Tails():
     def enter_idle(self):
         rospy.loginfo("FSM: enter_idle")
         #Intial pwm states
-        self.pwm_rud.ChangeDutyCycle(10)
         self.pwm_thr.ChangeDutyCycle(5)
-        sleep(2)
         #5% left, 10% right, 7.5% off
         self.pwm_rud.ChangeDutyCycle(7.5)
         self.pwm_ele.ChangeDutyCycle(7.5)
