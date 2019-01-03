@@ -1,5 +1,4 @@
 import rospy
-from rospy import sleep
 from std_msgs.msg import String
 import Queue
 from time import time
@@ -202,7 +201,7 @@ class Tails():
         # 7.5 to 7.6 will slowly rotate the drone right
         if self.state_t >= 15:
             self.stop_navigate()
-            
+
     def control_land(self):
         # Calls self.grounded() when done
         for dc in frange_r(6, 5.0, 0.1):
