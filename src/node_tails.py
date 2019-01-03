@@ -47,6 +47,8 @@ class Tails():
 
         self.last_cycle_time = time()
 
+        self.state_t = 0
+
         states = ['idle',
                   'launch',
                   'hover',
@@ -184,6 +186,8 @@ class Tails():
             elif self.state == 'GROUNDED':
                 self.control_grounded()
 
+            self.state_t += self.update_rate
+
     # Drone Control
     def control_idle(self):
         # TODO: Replace me with real logic!
@@ -196,7 +200,7 @@ class Tails():
             sleep(3)
         for dc in frange(5.0, 6, 0.1):
             self.pwm_thr.ChangeDutyCycle(dc)
-            sleep(0.2)    
+            sleep(0.2)
         self.hover()
 
     def control_hover(self):
@@ -232,6 +236,8 @@ class Tails():
         self.pwm_ele.ChangeDutyCycle(7.5)
         self.pwm_ail.ChangeDutyCycle(7.5)
 
+        self.state_t = 0
+
     def exit_idle(self):
         rospy.loginfo("FSM: exit_idle")
         #does not need implementation
@@ -240,12 +246,16 @@ class Tails():
         self.logger.log("launch")
         rospy.loginfo("FSM: enter_launch")
 
+        self.state_t = 0
+
     def exit_launch(self):
         rospy.loginfo("FSM: exit_launch")
 
     def enter_hover(self):
         self.logger.log("hover")
         rospy.loginfo("FSM: enter_hover")
+
+        self.state_t = 0
 
     def exit_hover(self):
         rospy.loginfo("FSM: exit_hover")
@@ -257,6 +267,8 @@ class Tails():
             self.pwm_thr.ChangeDutyCycle(dc)
             sleep(0.2)
 
+        self.state_t = 0
+
     def exit_land(self):
         rospy.loginfo("FSM: exit_land")
 
@@ -267,6 +279,8 @@ class Tails():
             self.pwm_rud.ChangeDutyCycle(dc)
             sleep(0.2)
             #pwm_ele.ChangeDutyCycle(dc)
+
+        self.state_t = 0
 
     def exit_navigate(self):
         rospy.loginfo("FSM: exit_navigate")
@@ -280,6 +294,8 @@ class Tails():
         for pwm in self.pwms:
             pwm.stop()
         GPIO.cleanup()
+
+        self.state_t = 0
 
     def ros_cmd_callback(self, cmd):
         self.command_queue.put(cmd)
