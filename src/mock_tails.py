@@ -34,8 +34,6 @@ class PWM():
         self.log()
 
     def stop(self):
-        self.duty = 0
-        self.log()
         self.logfile.close()
         self.started = False
 

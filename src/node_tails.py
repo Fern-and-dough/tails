@@ -128,7 +128,7 @@ class Tails():
 
         #All in off state
         for pwm in self.pwms:
-            pwm.start(0)
+            pwm.start(5)
 
         rospy.Subscriber('/cmd', String,
                          self.ros_cmd_callback, queue_size=100)
@@ -203,9 +203,6 @@ class Tails():
             self.hover()
 
     def control_hover(self):
-        # Will remain hovering for 30 seconds or shutdown
-        if self.state_t >= 30:
-            self.land()
         pass
 
     def control_navigate(self):
@@ -240,7 +237,7 @@ class Tails():
         self.logger.log("launch")
         rospy.loginfo("FSM: enter_launch")
 
-        # TODO: find optimal launch duty cycle 
+        # TODO: find optimal launch duty cycle
         self.pwm_thr.ChangeDutyCycle(5.6)
 
         self.state_t = 0
@@ -251,6 +248,9 @@ class Tails():
     def enter_hover(self):
         self.logger.log("hover")
         rospy.loginfo("FSM: enter_hover")
+
+        # TODO: Figure out the duty cycle for hovering
+        self.pwm_thr.ChangeDutyCycle(5.45)
 
         self.state_t = 0
 
