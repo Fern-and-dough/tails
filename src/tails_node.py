@@ -1,10 +1,12 @@
+#!/usr/bin/env python
+
 import rospy
 from std_msgs.msg import String
 from sensor_msgs.msg import Imu
 import Queue
 from collections import deque
 from time import time
-from transitions.extensions import GraphMachine as Machine
+from transitions import Machine
 from transitions import State
 import transitions
 import logging
@@ -16,7 +18,7 @@ class Tails():
         rospy.init_node('tails')
         rospy.on_shutdown(self.ros_shutdown_signal)
 
-        if rospy.getparam('~simulation_mode', True):
+        if rospy.get_param('~simulation_mode', True):
             from mock_tails import GPIO
             from mock_tails import FSMLogger
             self.logger = FSMLogger()
@@ -36,8 +38,8 @@ class Tails():
 
         self.last_cycle_time = time()
 
-        self.last_imu_linear = deque(maxlen=100)
-        self.last_imu_angular = deque(maxlen=100)
+        self.last_imu_linear = deque(maxlen=10)
+        self.last_imu_angular = deque(maxlen=10)
 
         self.state_t = 0.
 
@@ -78,11 +80,6 @@ class Tails():
         self.machine.add_transition('land', 'hover', 'land')
         self.machine.add_transition('grounded', 'land', 'idle')
 
-        try:
-            self.machine.get_graph().draw('visualize_finite_state_machine.png', prog='dot')
-        except:
-            pass
-
         self.shutdown_map = {'idle': 'shutdown',
                                 'launch': 'hover',
                                 'hover': 'land',
@@ -120,7 +117,7 @@ class Tails():
         rospy.Subscriber('/cmd', String,
                          self.ros_cmd_callback, queue_size=100)
 
-        rospy.Subscriber('/imu/data', Imu, self.ros_imu_callback, queue_size=10)
+        rospy.Subscriber('/imu/data_raw', Imu, self.ros_imu_callback, queue_size=10)
     def run(self):
 
         self.enter_idle()
@@ -176,8 +173,6 @@ class Tails():
 
             self.state_t += self.update_rate
 
-            print(self.state_t)
-
     # Drone Control
     def control_idle(self):
         # TODO: Replace me with real logic!
@@ -201,7 +196,7 @@ class Tails():
 
     def control_land(self):
         # TODO: Make this way more rigorous and use rosbag to record actual landing
-        if (self.linear_z_mean >= -9.81 - 0.1 and self.linear_z_mean <= -9.81 + 0.1) and self.linear_z_std < 0.1:
+        if (self.linear_z_mean >= 1326.0 - 10.0 and self.linear_z_mean <= 1326.0 + 10.0) and self.linear_z_std < 20.0:
             self.grounded()
 
     # FSM Transitions - Implement as needed
@@ -276,7 +271,8 @@ class Tails():
         rospy.loginfo("FSM: enter_shutdown")
         for pwm in self.pwms:
             pwm.stop()
-        GPIO.cleanup()
+        if not rospy.get_param('~simulation_mode', True):
+            GPIO.cleanup()
 
         self.state_t = 0
 
@@ -293,6 +289,8 @@ class Tails():
 
         self.linear_z_mean = np.mean(linear[:, 2])
         self.linear_z_std = np.std(linear[:, 2])
+
+        print("u: %f std: %f" % (self.linear_z_mean, self.linear_z_std))
 
     # ROS Signals
     def ros_shutdown_signal(self):

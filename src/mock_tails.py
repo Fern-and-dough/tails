@@ -76,4 +76,8 @@ class GPIO():
     def cleanup():
         pass
 
+    @staticmethod
+    def shutdown():
+        pass
+
     PWM = PWM
