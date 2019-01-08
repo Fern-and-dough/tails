@@ -11,21 +11,13 @@ from transitions import State
 import transitions
 import logging
 import numpy as np
+import RPi.GPIO as GPIO
 
 
 class Tails():
     def __init__(self, update_rate_hz=10, watchdog_timeout=10):
         rospy.init_node('tails')
         rospy.on_shutdown(self.ros_shutdown_signal)
-
-        if rospy.get_param('~simulation_mode', True):
-            from mock_tails import GPIO
-            from mock_tails import FSMLogger
-            self.logger = FSMLogger()
-            self.simulation_mode = True
-        else:
-            import RPi.GPIO as GPIO
-            self.simulation_mode = False
 
         # Threading / Synchronization Primitives
         self.command_queue = Queue.Queue()
@@ -91,7 +83,7 @@ class Tails():
         #set pins as output and as low
         ail = 7
         ele = 8
-        thr = 11
+        thr = 13
         rud = 12
 
         self.ctr = (ail, ele, thr, rud)
@@ -197,7 +189,8 @@ class Tails():
     def control_land(self):
         # TODO: Make this way more rigorous and use rosbag to record actual landing
         if (self.linear_z_mean >= 1326.0 - 10.0 and self.linear_z_mean <= 1326.0 + 10.0) and self.linear_z_std < 20.0:
-            self.grounded()
+            if self.state_t > 10.0:
+                self.grounded()
 
     # FSM Transitions - Implement as needed
     def enter_idle(self):
@@ -216,8 +209,6 @@ class Tails():
         #does not need implementation
 
     def enter_launch(self):
-        if self.simulation_mode:
-            self.logger.log("launch")
         rospy.loginfo("FSM: enter_launch")
 
         # TODO: find optimal launch duty cycle
@@ -229,8 +220,6 @@ class Tails():
         rospy.loginfo("FSM: exit_launch")
 
     def enter_hover(self):
-        if self.simulation_mode:
-            self.logger.log("hover")
         rospy.loginfo("FSM: enter_hover")
 
         # TODO: Figure out the duty cycle for hovering
@@ -242,8 +231,6 @@ class Tails():
         rospy.loginfo("FSM: exit_hover")
 
     def enter_land(self):
-        if self.simulation_mode:
-            self.logger.log("land")
         rospy.loginfo("FSM: enter_land")
 
         # TODO: Figure out the duty cycle which slowly loses altitude
@@ -255,8 +242,6 @@ class Tails():
         rospy.loginfo("FSM: exit_land")
 
     def enter_navigate(self):
-        if self.simulation_mode:
-            self.logger.log("navigate")
         rospy.loginfo("FSM: enter_navigate")
 
         self.state_t = 0
@@ -266,13 +251,10 @@ class Tails():
 
 
     def enter_shutdown(self):
-        if self.simulation_mode:
-            self.logger.log("shutdown")
         rospy.loginfo("FSM: enter_shutdown")
         for pwm in self.pwms:
             pwm.stop()
-        if not rospy.get_param('~simulation_mode', True):
-            GPIO.cleanup()
+        GPIO.cleanup()
 
         self.state_t = 0
 
