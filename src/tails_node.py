@@ -30,8 +30,8 @@ class Tails():
 
         self.last_cycle_time = time()
 
-        self.last_imu_linear = deque(maxlen=10)
-        self.last_imu_angular = deque(maxlen=10)
+        self.last_imu_linear = deque(maxlen=100)
+        self.last_imu_angular = deque(maxlen=100)
 
         self.state_t = 0.
 
@@ -271,8 +271,6 @@ class Tails():
 
         self.linear_z_mean = np.mean(linear[:, 2])
         self.linear_z_std = np.std(linear[:, 2])
-
-        print("u: %f std: %f" % (self.linear_z_mean, self.linear_z_std))
 
     # ROS Signals
     def ros_shutdown_signal(self):
