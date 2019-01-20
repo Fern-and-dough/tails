@@ -5,7 +5,12 @@
     <param name="~gpio_ele" value="8"/>
     <param name="~gpio_thr" value="13"/>
     <param name="~gpio_rud" value="12"/>
+
+    <param name="~land_ail" value="12.75"/>
+    <param name="~land_ele" value="12.75"/>
     <param name="~land_thr" value="13.514999999999999"/>
+    <param name="~land_rud" value="12.75"/>
+
     <param name="~watchdog_timeout" value="10"/>
   </node>
 </launch>

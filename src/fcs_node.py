@@ -17,7 +17,10 @@ class FCS():
         self.gpio_thr = rospy.get_param('~gpio_thr', 13)
         self.gpio_rud = rospy.get_param('~gpio_rud', 12)
 
+        self.land_ail = rospy.get_param('~land_ail', 5.0 / 100 * 255)
+        self.land_ele = rospy.get_param('~land_ele', 5.0 / 100 * 255)
         self.land_thr = rospy.get_param('~land_thr', 5.3 / 100 * 255)
+        self.land_rud = rospy.get_param('~land_rud', 5.0 / 100 * 255)
 
         self.watchdog_timeout = rospy.get_param('~watchdog_timeout', 10.0)
 
@@ -51,10 +54,10 @@ class FCS():
 
     def ros_fcs_callback(self, fcs):
         if self.armed:
-            ail = int(fcs.aileron / 100 * 255)
-            ele = int(fcs.elevator / 100 * 255)
-            thr = int(fcs.thrust / 100 * 255)
-            rud = int(fcs.rudder / 100 * 255)
+            ail = fcs.aileron / 100 * 255
+            ele = fcs.elevator / 100 * 255
+            thr = fcs.thrust / 100 * 255
+            rud = fcs.rudder / 100 * 255
 
             self.pi.set_PWM_dutycycle(self.gpio_ail, ail)
             self.pi.set_PWM_dutycycle(self.gpio_ele, ele)
@@ -81,7 +84,11 @@ class FCS():
 
             # Automatically land if we are armed and lose connection to tails node
             if self.armed and rospy.get_time() - self.last_message_time > self.watchdog_timeout:
+
+                self.pi.set_PWM_dutycycle(self.gpio_ail, self.land_ail)
+                self.pi.set_PWM_dutycycle(self.gpio_ele, self.land_ele)
                 self.pi.set_PWM_dutycycle(self.gpio_thr, self.land_thr)
+                self.pi.set_PWM_dutycycle(self.gpio_rud, self.land_rud)
 
                 if not latch_land:
                     rospy.logwarn("Lost connection to tails node, landing.")
