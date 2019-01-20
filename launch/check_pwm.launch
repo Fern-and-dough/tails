@@ -1,9 +1,0 @@
-<launch>
-
-  <include file="lsm9ds0.launch"/>
-
-  <node pkg="tails" type="tails_node.py" name="tails" output="screen">
-    <param name="~simulation_mode" value="false"/>
-  </node>
-
-</launch>

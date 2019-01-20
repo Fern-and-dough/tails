@@ -1,0 +1,11 @@
+<launch>
+  <node pkg="tails" type="fcs_node.py" name="fcs" output="screen">
+    <param name="~armed" value="false"/>
+    <param name="~gpio_ail" value="7"/>
+    <param name="~gpio_ele" value="8"/>
+    <param name="~gpio_thr" value="13"/>
+    <param name="~gpio_rud" value="12"/>
+    <param name="~land_thr" value="13.514999999999999"/>
+    <param name="~watchdog_timeout" value="10"/>
+  </node>
+</launch>

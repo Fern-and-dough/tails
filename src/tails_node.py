@@ -9,21 +9,20 @@ from time import time
 from transitions import Machine
 from transitions import State
 import transitions
-import logging
 import numpy as np
-import RPi.GPIO as GPIO
+from tails.msg import FlightControlSurfaces
 
 
 class Tails():
-    def __init__(self, update_rate_hz=10, watchdog_timeout=10):
+    def __init__(self):
         rospy.init_node('tails')
         rospy.on_shutdown(self.ros_shutdown_signal)
 
         # Threading / Synchronization Primitives
         self.command_queue = Queue.Queue()
 
-        self.update_rate = 1.0 / update_rate_hz
-        self.watchdog_timeout = watchdog_timeout
+        self.update_rate = 1.0 / 10.0
+        self.watchdog_timeout = rospy.get_param("~watchdog_timeout", 10.0)
         self.shutdown_flag = False
 
         self.last_event_time = time()
@@ -72,44 +71,41 @@ class Tails():
         self.machine.add_transition('land', 'hover', 'land')
         self.machine.add_transition('grounded', 'land', 'idle')
 
-        self.shutdown_map = {'idle': 'shutdown',
-                                'launch': 'hover',
+        self.shutdown_map = {    'launch': 'hover',
                                 'hover': 'land',
                                 'land': 'idle',
                                 'navigate': 'stop_navigate'}
 
-        GPIO.setmode(GPIO.BOARD) #change to BOARD numbering schema
-
-        #set pins as output and as low
-        ail = 7
-        ele = 8
-        thr = 13
-        rud = 12
-
-        self.ctr = (ail, ele, thr, rud)
-
-        #setup ctr as output channels and set to 1 (ON)
-        GPIO.setup(self.ctr[0], GPIO.OUT, initial = 0)
-        GPIO.setup(self.ctr[1], GPIO.OUT, initial = 0)
-        GPIO.setup(self.ctr[2], GPIO.OUT, initial = 0)
-        GPIO.setup(self.ctr[3], GPIO.OUT, initial = 0)
-
-        #start pwm with 100 freq
-        self.pwm_ail = GPIO.PWM(self.ctr[0], 50)
-        self.pwm_ele = GPIO.PWM(self.ctr[1], 50)
-        self.pwm_thr = GPIO.PWM(self.ctr[2], 50)
-        self.pwm_rud = GPIO.PWM(self.ctr[3], 50)
-
-        self.pwms = [self.pwm_ail, self.pwm_ele, self.pwm_thr, self.pwm_rud]
-
-        #All in off state
-        for pwm in self.pwms:
-            pwm.start(5)
+        self.last_ail = 5.0
+        self.last_ele = 5.0
+        self.last_thr = 5.0
+        self.last_rud = 5.0
 
         rospy.Subscriber('/cmd', String,
                          self.ros_cmd_callback, queue_size=100)
 
         rospy.Subscriber('/imu/data_raw', Imu, self.ros_imu_callback, queue_size=10)
+
+        self.fcs_pub = rospy.Publisher('fcs', FlightControlSurfaces, queue_size=100)
+        self.state_pub = rospy.Publisher('state', String, queue_size=100)
+
+
+    def publish_fcs(self, ail=None, ele=None, thr=None, rud=None):
+
+        fcs = FlightControlSurfaces()
+        fcs.header.stamp = rospy.get_rostime()
+        fcs.aileron = ail if ail is not None else self.last_ail
+        fcs.elevator = ele if ele is not None else self.last_ele
+        fcs.thrust = thr if thr is not None else self.last_thr
+        fcs.rudder = rud if rud is not None else self.last_rud
+
+        self.last_ail = ail if ail is not None else self.last_ail
+        self.last_ele = ele if ele is not None else self.last_ele
+        self.last_thr = thr if thr is not None else self.last_thr
+        self.last_rud = rud if rud is not None else self.last_rud
+
+        self.fcs_pub.publish(fcs)
+
     def run(self):
 
         self.enter_idle()
@@ -126,7 +122,8 @@ class Tails():
                 self.last_event_time = time()
 
             if  self.shutdown_flag or time() - self.last_event_time > self.watchdog_timeout:
-                command = self.shutdown_map[self.state]
+                if self.state in self.shutdown_map:
+                    command = self.shutdown_map[self.state]
 
             if command is not None:
                 try:
@@ -167,17 +164,25 @@ class Tails():
 
     # Drone Control
     def control_idle(self):
-        # TODO: Replace me with real logic!
-        pass
+        if rospy.is_shutdown():
+            self.shutdown()
+            return
+
+        #5% left, 10% right, 7.5% off
+        self.publish_fcs(thr=5, rud=7.5, ele=7.5, ail=7.5)
 
     def control_launch(self):
+        # TODO: find optimal launch duty cycle
+        self.publish_fcs(thr=5.6)
+
         # Calls self.hover() when done
         #increase duty cycle from 0 to 100%
         if self.state_t >= 5:
             self.hover()
 
     def control_hover(self):
-        pass
+        # TODO: Figure out the duty cycle for hovering
+        self.publish_fcs(thr=5.45)
 
     def control_navigate(self):
         # Calls self.stop_navigate() when done
@@ -187,6 +192,9 @@ class Tails():
             self.stop_navigate()
 
     def control_land(self):
+        # TODO: Figure out the duty cycle which slowly loses altitude
+        self.publish_fcs(thr=5.3)
+
         # TODO: Make this way more rigorous and use rosbag to record actual landing
         if (self.linear_z_mean >= 1326.0 - 10.0 and self.linear_z_mean <= 1326.0 + 10.0) and self.linear_z_std < 20.0:
             if self.state_t > 10.0:
@@ -194,13 +202,8 @@ class Tails():
 
     # FSM Transitions - Implement as needed
     def enter_idle(self):
+        self.state_pub.publish("idle")
         rospy.loginfo("FSM: enter_idle")
-        #Intial pwm states
-        self.pwm_thr.ChangeDutyCycle(5)
-        #5% left, 10% right, 7.5% off
-        self.pwm_rud.ChangeDutyCycle(7.5)
-        self.pwm_ele.ChangeDutyCycle(7.5)
-        self.pwm_ail.ChangeDutyCycle(7.5)
 
         self.state_t = 0
 
@@ -209,10 +212,8 @@ class Tails():
         #does not need implementation
 
     def enter_launch(self):
+        self.state_pub.publish("launch")
         rospy.loginfo("FSM: enter_launch")
-
-        # TODO: find optimal launch duty cycle
-        self.pwm_thr.ChangeDutyCycle(5.6)
 
         self.state_t = 0
 
@@ -220,10 +221,8 @@ class Tails():
         rospy.loginfo("FSM: exit_launch")
 
     def enter_hover(self):
+        self.state_pub.publish("hover")
         rospy.loginfo("FSM: enter_hover")
-
-        # TODO: Figure out the duty cycle for hovering
-        self.pwm_thr.ChangeDutyCycle(5.45)
 
         self.state_t = 0
 
@@ -231,10 +230,8 @@ class Tails():
         rospy.loginfo("FSM: exit_hover")
 
     def enter_land(self):
+        self.state_pub.publish("land")
         rospy.loginfo("FSM: enter_land")
-
-        # TODO: Figure out the duty cycle which slowly loses altitude
-        self.pwm_thr.ChangeDutyCycle(5.3)
 
         self.state_t = 0
 
@@ -242,6 +239,7 @@ class Tails():
         rospy.loginfo("FSM: exit_land")
 
     def enter_navigate(self):
+        self.state_pub.publish("navigate")
         rospy.loginfo("FSM: enter_navigate")
 
         self.state_t = 0
@@ -251,10 +249,8 @@ class Tails():
 
 
     def enter_shutdown(self):
+        self.state_pub.publish("shutdown")
         rospy.loginfo("FSM: enter_shutdown")
-        for pwm in self.pwms:
-            pwm.stop()
-        GPIO.cleanup()
 
         self.state_t = 0
 
@@ -278,17 +274,5 @@ class Tails():
 
 
 if __name__ == '__main__':
-
-    tails = Tails()
-    tails.run()
-
-    """
-    try:
-        tails.run()
-    except Exception as e:
-        rospy.loginfo("--FATAL EXCEPTION--")
-        rospy.loginfo(str(e))
-        rospy.loginfo("ATTEMPTING EMERGENCY landING")
-
-        # TODO: Emergency landing
-    """
+    t = Tails()
+    t.run()
