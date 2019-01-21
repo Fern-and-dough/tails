@@ -26,7 +26,7 @@ class FCS():
 
         for gpio in [self.gpio_ail, self.gpio_ele, self.gpio_thr, self.gpio_rud]:
             self.pi.set_mode(gpio, pigpio.OUTPUT)
-            self.pi.set_PWM_frequency(gpio, rospy.get_param('pwm_freq', 50))
+            self.pi.set_PWM_frequency(gpio, rospy.get_param('~pwm_freq', 50))
             self.pi.set_PWM_dutycycle(gpio, 5.0 / 100 * 255)
 
         self.last_message_time = rospy.get_time() - 5.0
@@ -73,7 +73,7 @@ class FCS():
         self.last_message_time = rospy.get_time()
 
     def run(self):
-        latch_land = False
+        latch_land_warn = False
 
         r = rospy.Rate(10)
         while True:
@@ -90,11 +90,11 @@ class FCS():
                 self.pi.set_PWM_dutycycle(self.gpio_thr, self.land_thr)
                 self.pi.set_PWM_dutycycle(self.gpio_rud, self.land_rud)
 
-                if not latch_land:
+                if not latch_land_warn:
                     rospy.logwarn("Lost connection to tails node, landing.")
-                latch_land = True
+                latch_land_warn = True
             else:
-                latch_land = False
+                latch_land_warn = False
 
             r.sleep()
 

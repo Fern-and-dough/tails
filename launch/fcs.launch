@@ -11,6 +11,7 @@
     <param name="~land_thr" value="13.514999999999999"/>
     <param name="~land_rud" value="12.75"/>
 
+    <param name="~pwm_freq" value="50"/>
     <param name="~watchdog_timeout" value="10"/>
   </node>
 </launch>
