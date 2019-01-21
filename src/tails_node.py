@@ -196,7 +196,10 @@ class Tails():
         self.publish_fcs(thr=5.3)
 
         # TODO: Make this way more rigorous and use rosbag to record actual landing
-        if (self.linear_z_mean >= 1326.0 - 10.0 and self.linear_z_mean <= 1326.0 + 10.0) and self.linear_z_std < 20.0:
+        print (self.linear_z_mean)
+        print (self.linear_z_std)
+
+        if (self.linear_z_mean >= 0.6494140625 - 0.05*.6494140625 and self.linear_z_mean <= 0.6494140625 + 0.05*.6494140625) and self.linear_z_std < 0.01:
             if self.state_t > 10.0:
                 self.grounded()
 
